@@ -1,11 +1,18 @@
 export type Phase = 1 | 2 | 3 | 4 | 5;
 
+export interface QuestionResponse {
+  question: string;
+  intent: string;
+  followup_triggers: string[];
+}
+
 export interface Message {
   id: string;
   role: 'user' | 'assistant';
   content: string;
   timestamp: Date;
   phase?: Phase;
+  meta?: Pick<QuestionResponse, 'intent' | 'followup_triggers'>;
 }
 
 export interface QolScores {
