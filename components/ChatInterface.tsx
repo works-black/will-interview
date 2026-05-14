@@ -1,7 +1,15 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import type { Message, Phase } from '@/lib/types';
+
+// Web Speech API type declarations
+declare global {
+  interface Window {
+    SpeechRecognition: typeof SpeechRecognition;
+    webkitSpeechRecognition: typeof SpeechRecognition;
+  }
+}
 
 interface Props {
   messages: Message[];
@@ -17,17 +25,107 @@ export default function ChatInterface({
   isLoading,
 }: Props) {
   const [input, setInput] = useState('');
+  const [isListening, setIsListening] = useState(false);
+  const [isSpeechSupported, setIsSpeechSupported] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const recognitionRef = useRef<InstanceType<typeof SpeechRecognition> | null>(null);
+  // Accumulate confirmed (final) results separately to avoid re-processing
+  const confirmedTranscriptRef = useRef('');
+
+  useEffect(() => {
+    setIsSpeechSupported(
+      typeof window !== 'undefined' &&
+        ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window)
+    );
+  }, []);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isLoading]);
+
+  const stopRecognition = useCallback(() => {
+    recognitionRef.current?.stop();
+    recognitionRef.current = null;
+    setIsListening(false);
+  }, []);
+
+  const startRecognition = useCallback(() => {
+    if (typeof window === 'undefined') return;
+
+    const SpeechRecognitionAPI =
+      window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognitionAPI) return;
+
+    confirmedTranscriptRef.current = input; // Start from existing input content
+
+    const recognition = new SpeechRecognitionAPI();
+    recognition.lang = 'ja-JP';
+    recognition.continuous = true;
+    recognition.interimResults = true;
+
+    recognition.onresult = (event: SpeechRecognitionEvent) => {
+      let interimTranscript = '';
+      let newFinalTranscript = '';
+
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const transcript = event.results[i][0].transcript;
+        if (event.results[i].isFinal) {
+          newFinalTranscript += transcript;
+        } else {
+          interimTranscript += transcript;
+        }
+      }
+
+      if (newFinalTranscript) {
+        confirmedTranscriptRef.current += newFinalTranscript;
+      }
+      setInput(confirmedTranscriptRef.current + interimTranscript);
+    };
+
+    recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
+      if (event.error !== 'aborted') {
+        console.error('Speech recognition error:', event.error);
+        if (event.error === 'not-allowed') {
+          alert('マイクの使用許可が必要です。ブラウザの設定でマイクを許可してください。');
+        }
+      }
+      stopRecognition();
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+      recognitionRef.current = null;
+    };
+
+    try {
+      recognition.start();
+      recognitionRef.current = recognition;
+      setIsListening(true);
+    } catch (err) {
+      console.error('Failed to start recognition:', err);
+    }
+  }, [input, stopRecognition]);
+
+  const handleMicPointerDown = (e: React.PointerEvent) => {
+    e.preventDefault();
+    startRecognition();
+  };
+
+  const handleMicPointerUp = () => {
+    stopRecognition();
+  };
+
+  // Stop recognition if pointer leaves the button while held
+  const handleMicPointerLeave = () => {
+    if (isListening) stopRecognition();
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim() || isLoading) return;
     const content = input.trim();
     setInput('');
+    confirmedTranscriptRef.current = '';
     await onSendMessage(content);
   };
 
@@ -98,8 +196,15 @@ export default function ChatInterface({
       </div>
 
       <form onSubmit={handleSubmit} className="border-t border-gray-200 p-4 bg-gray-50">
-        <p className="text-xs text-gray-400 mb-2">利用者が話した内容を入力してください</p>
-        <div className="flex gap-3">
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-xs text-gray-400">利用者が話した内容を入力してください</p>
+          {isListening && (
+            <span className="text-xs text-red-500 font-semibold animate-pulse">
+              🔴 認識中...
+            </span>
+          )}
+        </div>
+        <div className="flex gap-2">
           <textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
@@ -114,6 +219,28 @@ export default function ChatInterface({
             rows={2}
             disabled={isLoading}
           />
+
+          {isSpeechSupported && (
+            <button
+              type="button"
+              onPointerDown={handleMicPointerDown}
+              onPointerUp={handleMicPointerUp}
+              onPointerLeave={handleMicPointerLeave}
+              disabled={isLoading}
+              aria-label={isListening ? '録音中（離すと停止）' : 'マイク入力（押している間だけ録音）'}
+              className={`w-14 rounded-xl flex flex-col items-center justify-center gap-0.5 select-none transition-all touch-none ${
+                isListening
+                  ? 'bg-red-500 text-white animate-pulse shadow-lg shadow-red-200'
+                  : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+              } disabled:opacity-50 disabled:cursor-not-allowed`}
+            >
+              <span className="text-xl leading-none">{isListening ? '🔴' : '🎤'}</span>
+              <span className="text-[10px] font-medium leading-none">
+                {isListening ? '録音中' : 'マイク'}
+              </span>
+            </button>
+          )}
+
           <button
             type="submit"
             disabled={isLoading || !input.trim()}
