@@ -1,0 +1,26 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html {
+  font-size: 18px;
+}
+
+body {
+  background-color: #f8fafc;
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+
+  body {
+    background-color: white;
+    font-size: 14px;
+  }
+
+  .print-break {
+    page-break-before: always;
+  }
+}
