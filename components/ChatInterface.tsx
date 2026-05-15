@@ -69,6 +69,8 @@ export default function ChatInterface({
   const [isSpeechSupported, setIsSpeechSupported] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
+  // Mirror of isListening for use inside recognition callbacks (avoids stale closure)
+  const isListeningRef = useRef(false);
   // Accumulate confirmed (final) results separately to avoid re-processing
   const confirmedTranscriptRef = useRef('');
 
@@ -84,9 +86,10 @@ export default function ChatInterface({
   }, [messages, isLoading]);
 
   const stopRecognition = useCallback(() => {
+    isListeningRef.current = false;
+    setIsListening(false);
     recognitionRef.current?.stop();
     recognitionRef.current = null;
-    setIsListening(false);
   }, []);
 
   const startRecognition = useCallback(() => {
@@ -129,40 +132,48 @@ export default function ChatInterface({
           alert('マイクの使用許可が必要です。ブラウザの設定でマイクを許可してください。');
         }
       }
-      stopRecognition();
-    };
-
-    recognition.onend = () => {
+      isListeningRef.current = false;
       setIsListening(false);
       recognitionRef.current = null;
+    };
+
+    // Auto-restart while toggle is still ON (browsers stop after ~60s of silence)
+    recognition.onend = () => {
+      if (isListeningRef.current) {
+        try {
+          recognition.start();
+        } catch {
+          isListeningRef.current = false;
+          setIsListening(false);
+          recognitionRef.current = null;
+        }
+      } else {
+        recognitionRef.current = null;
+      }
     };
 
     try {
       recognition.start();
       recognitionRef.current = recognition;
+      isListeningRef.current = true;
       setIsListening(true);
     } catch (err) {
       console.error('Failed to start recognition:', err);
     }
-  }, [input, stopRecognition]);
+  }, [input]);
 
-  const handleMicPointerDown = (e: React.PointerEvent) => {
-    e.preventDefault();
-    startRecognition();
-  };
-
-  const handleMicPointerUp = () => {
-    stopRecognition();
-  };
-
-  // Stop recognition if pointer leaves the button while held
-  const handleMicPointerLeave = () => {
-    if (isListening) stopRecognition();
+  const handleMicToggle = () => {
+    if (isListeningRef.current) {
+      stopRecognition();
+    } else {
+      startRecognition();
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim() || isLoading) return;
+    if (isListeningRef.current) stopRecognition();
     const content = input.trim();
     setInput('');
     confirmedTranscriptRef.current = '';
@@ -263,20 +274,18 @@ export default function ChatInterface({
           {isSpeechSupported && (
             <button
               type="button"
-              onPointerDown={handleMicPointerDown}
-              onPointerUp={handleMicPointerUp}
-              onPointerLeave={handleMicPointerLeave}
+              onClick={handleMicToggle}
               disabled={isLoading}
-              aria-label={isListening ? '録音中（離すと停止）' : 'マイク入力（押している間だけ録音）'}
-              className={`w-14 rounded-xl flex flex-col items-center justify-center gap-0.5 select-none transition-all touch-none ${
+              aria-label={isListening ? '録音中 - タップして停止' : 'タップして録音開始'}
+              className={`w-14 rounded-xl flex flex-col items-center justify-center gap-0.5 select-none transition-all ${
                 isListening
                   ? 'bg-red-500 text-white animate-pulse shadow-lg shadow-red-200'
                   : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
               } disabled:opacity-50 disabled:cursor-not-allowed`}
             >
               <span className="text-xl leading-none">{isListening ? '🔴' : '🎤'}</span>
-              <span className="text-[10px] font-medium leading-none">
-                {isListening ? '録音中' : 'マイク'}
+              <span className="text-[10px] font-medium leading-none text-center px-0.5">
+                {isListening ? '録音中' : '録音'}
               </span>
             </button>
           )}
