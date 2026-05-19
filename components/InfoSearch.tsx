@@ -1,7 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
 
-// ── 型定義 ──────────────────────────────────────
 interface SearchResult {
   name: string;
   category: string;
@@ -53,133 +52,165 @@ interface Keyword {
 
 const STORAGE_KEY = "will_search_history";
 
-// ── RouteCard（InfoSearchの外に定義）────────────
-const RouteCard = ({ route, index }: { route: Route; index: number }) => {
+const STEP_ICON: Record<string, string> = {
+  walk: "🚶", train: "🚃", bus: "🚌", subway: "🚇", taxi: "🚕",
+};
+const STEP_COLOR: Record<string, string> = {
+  walk: "#6b7280", train: "#1a4a8a", bus: "#d97706",
+  subway: "#7c3aed", taxi: "#dc2626",
+};
+const STEP_BG: Record<string, string> = {
+  walk: "#f3f4f6", train: "#eff6ff", bus: "#fffbeb",
+  subway: "#faf5ff", taxi: "#fff5f5",
+};
+const STEP_LABEL: Record<string, string> = {
+  walk: "🚶 徒歩", train: "🚃 電車", bus: "🚌 バス",
+  subway: "🚇 地下鉄", taxi: "🚕 タクシー",
+};
+
+// ────────────────────────────────────────────
+// RouteCard — InfoSearch の外側で定義
+// ────────────────────────────────────────────
+function RouteCard({ route, index }: { route: Route; index: number }) {
   const [open, setOpen] = useState(index === 0);
 
-  const rankColors = ["#1a4a8a", "#2d6047", "#7c3aed"];
-  const rankLabels = ["🥇 おすすめ", "🥈 別ルート", "🥉 別ルート"];
-  const color = rankColors[index] ?? "#555";
-
-  const stepIcon: Record<string, string> = {
-    walk: "🚶", train: "🚃", bus: "🚌", subway: "🚇", taxi: "🚕",
-  };
-  const stepColor: Record<string, string> = {
-    walk: "#6b7280", train: "#1a4a8a", bus: "#d97706",
-    subway: "#7c3aed", taxi: "#dc2626",
-  };
-  const stepBg: Record<string, string> = {
-    walk: "#f3f4f6", train: "#eff6ff", bus: "#fffbeb",
-    subway: "#faf5ff", taxi: "#fff5f5",
-  };
+  const RANK_COLORS = ["#1a4a8a", "#2d6047", "#7c3aed"];
+  const RANK_LABELS = ["🥇 おすすめ", "🥈 別ルート", "🥉 別ルート"];
+  const color = RANK_COLORS[index] ?? "#555";
 
   return (
     <div style={{
-      border: `2px solid ${color}`, borderRadius: 16,
-      overflow: "hidden", marginBottom: 16, fontSize: 16,
+      border: `2px solid ${color}`,
+      borderRadius: 16,
+      overflow: "hidden",
+      marginBottom: 16,
     }}>
-      {/* ヘッダー */}
+      {/* ヘッダー（タップで開閉） */}
       <button
-        onClick={() => setOpen(!open)}
+        onClick={() => setOpen(v => !v)}
         style={{
-          width: "100%", textAlign: "left", cursor: "pointer",
-          background: color, color: "#fff", padding: "14px 18px",
-          border: "none", display: "flex",
-          justifyContent: "space-between", alignItems: "center",
+          width: "100%",
+          textAlign: "left",
+          background: color,
+          color: "#fff",
+          padding: "14px 16px",
+          border: "none",
+          cursor: "pointer",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          gap: 8,
         }}
       >
-        <div>
-          <span style={{ fontWeight: 700, fontSize: 18 }}>
-            {rankLabels[index] ?? `ルート${index + 1}`}
-          </span>
-          <span style={{ marginLeft: 12, opacity: 0.85, fontSize: 15 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontWeight: 700, fontSize: 18 }}>
+            {RANK_LABELS[index] ?? `ルート${index + 1}`}
+          </div>
+          <div style={{ fontSize: 14, opacity: 0.9, marginTop: 2 }}>
             {route.summary}
-          </span>
+          </div>
         </div>
-        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+        <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
           <span style={{
-            background: "rgba(255,255,255,0.2)", borderRadius: 20,
-            padding: "4px 12px", fontSize: 15,
+            background: "rgba(255,255,255,0.2)",
+            borderRadius: 20, padding: "4px 10px", fontSize: 14,
           }}>⏱ {route.total_time}</span>
           <span style={{
-            background: "rgba(255,255,255,0.2)", borderRadius: 20,
-            padding: "4px 12px", fontSize: 15,
+            background: "rgba(255,255,255,0.2)",
+            borderRadius: 20, padding: "4px 10px", fontSize: 14,
           }}>💴 {route.total_cost}</span>
           <span style={{ fontSize: 18 }}>{open ? "▲" : "▼"}</span>
         </div>
       </button>
 
       {open && (
-        <div style={{ padding: "16px 18px", background: "#fff" }}>
+        <div style={{ background: "#fff", padding: "16px" }}>
 
           {/* 横タイムライン */}
           <div style={{
-            display: "flex", alignItems: "center",
-            padding: "12px 0", marginBottom: 16, overflowX: "auto",
+            display: "flex",
+            alignItems: "center",
+            overflowX: "auto",
+            paddingBottom: 8,
+            marginBottom: 16,
+            gap: 0,
           }}>
             {route.steps.map((step, i) => (
               <div key={i} style={{ display: "flex", alignItems: "center" }}>
-                <div style={{ textAlign: "center", minWidth: 68 }}>
+                <div style={{ textAlign: "center", minWidth: 64 }}>
                   <div style={{
-                    width: 42, height: 42, borderRadius: "50%",
-                    background: stepColor[step.type] ?? "#555",
+                    width: 44, height: 44, borderRadius: "50%",
+                    background: STEP_COLOR[step.type] ?? "#999",
                     display: "flex", alignItems: "center",
-                    justifyContent: "center", fontSize: 20, margin: "0 auto 4px",
+                    justifyContent: "center", fontSize: 22,
+                    margin: "0 auto 4px",
+                    color: "#fff",
                   }}>
-                    {stepIcon[step.type] ?? "🔹"}
+                    {STEP_ICON[step.type] ?? "●"}
                   </div>
                   <div style={{
                     fontSize: 13, fontWeight: 700,
-                    color: stepColor[step.type] ?? "#555",
-                  }}>{step.duration}</div>
+                    color: STEP_COLOR[step.type] ?? "#555",
+                  }}>
+                    {step.duration}
+                  </div>
                   {step.cost && (
-                    <div style={{ fontSize: 12, color: "#888" }}>{step.cost}</div>
+                    <div style={{ fontSize: 11, color: "#888" }}>
+                      {step.cost}
+                    </div>
                   )}
                 </div>
                 {i < route.steps.length - 1 && (
                   <div style={{
-                    flex: 1, minWidth: 20, height: 3,
-                    background: "#e5e7eb", margin: "0 4px",
+                    width: 28, height: 3,
+                    background: "#d1d5db",
+                    flexShrink: 0,
                   }} />
                 )}
               </div>
             ))}
           </div>
 
-          {/* 詳細ステップ */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          {/* ステップ詳細 */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             {route.steps.map((step, i) => (
               <div key={i} style={{
-                display: "flex", alignItems: "flex-start", gap: 12,
-                background: stepBg[step.type] ?? "#f9fafb",
-                borderRadius: 10, padding: "12px 14px",
-                borderLeft: `4px solid ${stepColor[step.type] ?? "#ccc"}`,
+                display: "flex",
+                alignItems: "flex-start",
+                gap: 12,
+                background: STEP_BG[step.type] ?? "#f9fafb",
+                borderRadius: 10,
+                padding: "12px 14px",
+                borderLeft: `4px solid ${STEP_COLOR[step.type] ?? "#ccc"}`,
               }}>
-                <div style={{ fontSize: 24, flexShrink: 0, lineHeight: 1 }}>
-                  {stepIcon[step.type] ?? "🔹"}
+                <div style={{ fontSize: 26, flexShrink: 0, lineHeight: 1 }}>
+                  {STEP_ICON[step.type] ?? "●"}
                 </div>
                 <div style={{ flex: 1 }}>
                   <div style={{
-                    display: "flex", justifyContent: "space-between",
-                    alignItems: "flex-start", flexWrap: "wrap", gap: 4,
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    flexWrap: "wrap",
+                    gap: 4,
                   }}>
                     <span style={{
                       fontWeight: 700, fontSize: 16,
-                      color: stepColor[step.type] ?? "#333",
+                      color: STEP_COLOR[step.type] ?? "#333",
                     }}>
-                      {step.type === "walk" ? "🚶 徒歩"
-                        : step.type === "train" ? "🚃 電車"
-                        : step.type === "bus" ? "🚌 バス"
-                        : step.type === "subway" ? "🚇 地下鉄"
-                        : "🚕 タクシー"}
-                      　{step.duration}
+                      {STEP_LABEL[step.type] ?? step.type}　{step.duration}
                     </span>
                     {step.cost && (
                       <span style={{
-                        background: "#fff", border: "1px solid #e5e7eb",
-                        borderRadius: 12, padding: "2px 10px",
-                        fontSize: 14, color: "#374151",
-                      }}>💴 {step.cost}</span>
+                        background: "#fff",
+                        border: "1px solid #e5e7eb",
+                        borderRadius: 12,
+                        padding: "2px 10px",
+                        fontSize: 14,
+                        color: "#374151",
+                      }}>
+                        💴 {step.cost}
+                      </span>
                     )}
                   </div>
                   <div style={{ fontSize: 15, color: "#374151", marginTop: 4 }}>
@@ -198,17 +229,20 @@ const RouteCard = ({ route, index }: { route: Route; index: number }) => {
           {/* 休憩スポット */}
           {route.rest_spots && route.rest_spots.length > 0 && (
             <div style={{
-              marginTop: 14, padding: "12px 16px",
-              background: "#f0fdf4", borderRadius: 10,
+              marginTop: 14,
+              padding: "12px 16px",
+              background: "#f0fdf4",
+              borderRadius: 10,
               border: "1px solid #bbf7d0",
             }}>
               <div style={{
-                fontWeight: 700, color: "#15803d", fontSize: 15, marginBottom: 6,
+                fontWeight: 700, color: "#15803d",
+                fontSize: 15, marginBottom: 6,
               }}>🪑 途中の休憩スポット</div>
               {route.rest_spots.map((spot, i) => (
-                <div key={i} style={{ fontSize: 15, color: "#166534", padding: "2px 0" }}>
-                  ・{spot}
-                </div>
+                <div key={i} style={{
+                  fontSize: 15, color: "#166534", paddingBottom: 2,
+                }}>・{spot}</div>
               ))}
             </div>
           )}
@@ -216,12 +250,15 @@ const RouteCard = ({ route, index }: { route: Route; index: number }) => {
           {/* 高齢者向けコツ */}
           {route.elder_tips && (
             <div style={{
-              marginTop: 10, padding: "12px 16px",
-              background: "#fffbeb", borderRadius: 10,
+              marginTop: 10,
+              padding: "12px 16px",
+              background: "#fffbeb",
+              borderRadius: 10,
               border: "1px solid #fde68a",
             }}>
               <div style={{
-                fontWeight: 700, color: "#92400e", fontSize: 15, marginBottom: 4,
+                fontWeight: 700, color: "#92400e",
+                fontSize: 15, marginBottom: 4,
               }}>👴 コーディネーターへのポイント</div>
               <div style={{ fontSize: 15, color: "#78350f" }}>
                 {route.elder_tips}
@@ -232,10 +269,12 @@ const RouteCard = ({ route, index }: { route: Route; index: number }) => {
       )}
     </div>
   );
-};
+}
 
-// ── TagInput（InfoSearchの外に定義）─────────────
-const TagInput = ({
+// ────────────────────────────────────────────
+// TagInput — InfoSearch の外側で定義
+// ────────────────────────────────────────────
+function TagInput({
   tags, input, onInputChange, onAddTag, onRemoveTag,
   placeholder, color, inputId,
 }: {
@@ -247,25 +286,15 @@ const TagInput = ({
   placeholder: string;
   color: string;
   inputId: string;
-}) => {
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter" && input.trim()) {
-      e.preventDefault();
-      onAddTag(input.trim());
-      onInputChange("");
-    }
-    if (e.key === "Backspace" && !input && tags.length > 0) {
-      onRemoveTag(tags.length - 1);
-    }
-  };
-
+}) {
   return (
     <div
       style={{
-        display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center",
+        display: "flex", flexWrap: "wrap", gap: 6,
+        alignItems: "center",
         border: "1px solid #d1d5db", borderRadius: 12,
-        padding: "8px 12px", background: "#fff",
-        minHeight: 52, cursor: "text",
+        padding: "8px 12px", background: "#fff", minHeight: 52,
+        cursor: "text",
       }}
       onClick={() => document.getElementById(inputId)?.focus()}
     >
@@ -284,7 +313,7 @@ const TagInput = ({
               borderRadius: "50%", width: 18, height: 18,
               cursor: "pointer", color: "#fff", fontSize: 11,
               display: "flex", alignItems: "center",
-              justifyContent: "center", padding: 0,
+              justifyContent: "center", padding: 0, lineHeight: 1,
             }}
           >✕</button>
         </span>
@@ -293,7 +322,16 @@ const TagInput = ({
         id={inputId}
         value={input}
         onChange={(e) => onInputChange(e.target.value)}
-        onKeyDown={handleKeyDown}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && input.trim()) {
+            e.preventDefault();
+            onAddTag(input.trim());
+            onInputChange("");
+          }
+          if (e.key === "Backspace" && !input && tags.length > 0) {
+            onRemoveTag(tags.length - 1);
+          }
+        }}
         onBlur={() => {
           if (input.trim()) { onAddTag(input.trim()); onInputChange(""); }
         }}
@@ -305,20 +343,17 @@ const TagInput = ({
       />
     </div>
   );
-};
-
-// ── メインコンポーネント ─────────────────────────
-interface Props {
-  defaultLocation?: string;
-  conversationMessages?: { role: string; content: string }[];
 }
 
+// ────────────────────────────────────────────
+// メインコンポーネント
+// ────────────────────────────────────────────
 const PRIORITIES = [
-  { key: "comfort",  label: "🌿 疲れにくい",    sub: "休憩スポット多め" },
-  { key: "distance", label: "🚶 歩く距離少なめ", sub: "乗り換えも少なく" },
-  { key: "cost",     label: "💴 交通費を節約",   sub: "最安ルート" },
-  { key: "time",     label: "⏱ 時間を短く",     sub: "特急・快速優先" },
-] as const;
+  { key: "comfort"  as const, label: "🌿 疲れにくい",    sub: "休憩スポット多め" },
+  { key: "distance" as const, label: "🚶 歩く距離少なめ", sub: "乗り換えも少なく" },
+  { key: "cost"     as const, label: "💴 交通費を節約",   sub: "最安ルート" },
+  { key: "time"     as const, label: "⏱ 時間を短く",     sub: "特急・快速優先" },
+];
 
 const CATEGORIES = [
   "絵画・水彩画","書道・習字","陶芸・クラフト","体操・ヨガ",
@@ -330,33 +365,29 @@ const CATEGORIES = [
 export default function InfoSearch({
   defaultLocation = "",
   conversationMessages = [],
-}: Props) {
-  // ── 検索フォーム
+}: {
+  defaultLocation?: string;
+  conversationMessages?: { role: string; content: string }[];
+}) {
   const [locationTags, setLocationTags] = useState<string[]>(
     defaultLocation ? [defaultLocation] : []
   );
   const [locationInput, setLocationInput] = useState("");
-  const [queryTags, setQueryTags] = useState<string[]>([]);
-  const [queryInput, setQueryInput] = useState("");
-  const [category, setCategory] = useState("");
-  const [loading, setLoading] = useState(false);
-
-  // ── 検索履歴
+  const [queryTags, setQueryTags]     = useState<string[]>([]);
+  const [queryInput, setQueryInput]   = useState("");
+  const [category, setCategory]       = useState("");
+  const [loading, setLoading]         = useState(false);
   const [searchHistory, setSearchHistory] = useState<SearchHistory[]>([]);
-
-  // ── キーワード抽出
-  const [keywords, setKeywords] = useState<Keyword[]>([]);
-  const [kwLoading, setKwLoading] = useState(false);
-
-  // ── ルート
+  const [keywords, setKeywords]       = useState<Keyword[]>([]);
+  const [kwLoading, setKwLoading]     = useState(false);
   const [selectedResult, setSelectedResult] = useState<SearchResult | null>(null);
-  const [routeFrom, setRouteFrom] = useState("");
+  const [routeFrom, setRouteFrom]     = useState("");
   const [routePriority, setRoutePriority] =
     useState<"distance" | "cost" | "time" | "comfort">("comfort");
   const [routeResult, setRouteResult] = useState<RouteResponse | null>(null);
   const [routeLoading, setRouteLoading] = useState(false);
 
-  // ── localStorage から履歴を読み込む
+  // localStorage から履歴を読み込み
   useEffect(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
@@ -364,19 +395,19 @@ export default function InfoSearch({
     }
   }, []);
 
-  // ── 会話からキーワード自動抽出
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  // 会話が更新されたら自動抽出
   useEffect(() => {
-    if (conversationMessages.length > 0) extractKeywords();
+    if (conversationMessages.length > 2) extractKeywords();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [conversationMessages.length]);
 
-  const saveHistory = (newHistory: SearchHistory[]) => {
-    setSearchHistory(newHistory);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(newHistory));
+  const saveHistory = (h: SearchHistory[]) => {
+    setSearchHistory(h);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(h));
   };
 
   const extractKeywords = async () => {
-    if (conversationMessages.length === 0) return;
+    if (!conversationMessages.length) return;
     setKwLoading(true);
     try {
       const res = await fetch("/api/extract-keywords", {
@@ -394,7 +425,6 @@ export default function InfoSearch({
     const qStr = [...queryTags, queryInput.trim()].filter(Boolean).join(" ");
     const lStr = [...locationTags, locationInput.trim()].filter(Boolean).join(" ");
     if (!qStr || !lStr) return;
-
     setLoading(true);
     try {
       const res = await fetch("/api/search", {
@@ -403,8 +433,7 @@ export default function InfoSearch({
         body: JSON.stringify({ query: qStr, location: lStr, category }),
       });
       const data: SearchResponse = await res.json();
-
-      const newEntry: SearchHistory = {
+      const entry: SearchHistory = {
         id: Date.now().toString(),
         query: qStr,
         location: lStr,
@@ -414,7 +443,7 @@ export default function InfoSearch({
         }),
         data,
       };
-      saveHistory([newEntry, ...searchHistory]);
+      saveHistory([entry, ...searchHistory]);
     } catch {}
     finally { setLoading(false); }
   };
@@ -422,20 +451,23 @@ export default function InfoSearch({
   const handleRouteSearch = async () => {
     if (!selectedResult || !routeFrom) return;
     setRouteLoading(true);
+    setRouteResult(null);
     try {
       const res = await fetch("/api/route-suggest", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           from: routeFrom,
-          to: selectedResult.name + " " + selectedResult.location,
+          to: `${selectedResult.name} ${selectedResult.location}`,
           priority: routePriority,
         }),
       });
       const data: RouteResponse = await res.json();
-      console.log("Route API response:", JSON.stringify(data, null, 2));
+      console.log("Route response:", JSON.stringify(data, null, 2));
       setRouteResult(data);
-    } catch {}
+    } catch (err) {
+      console.error("Route error:", err);
+    }
     finally { setRouteLoading(false); }
   };
 
@@ -449,9 +481,9 @@ export default function InfoSearch({
   };
 
   return (
-    <div style={{ maxWidth: 720, margin: "0 auto", padding: "16px 16px 40px", fontSize: 16 }}>
+    <div style={{ maxWidth: 720, margin: "0 auto", padding: "16px 16px 60px", fontSize: 16 }}>
 
-      {/* ━━━━━ セクション① キーワードタグ ━━━━━ */}
+      {/* ── キーワードタグ ── */}
       <div style={{
         background: "#f0f4ff", borderRadius: 14, padding: "14px 16px",
         marginBottom: 20, border: "1px solid #c7d7f9",
@@ -471,9 +503,7 @@ export default function InfoSearch({
               borderRadius: 8, padding: "6px 14px",
               fontSize: 14, cursor: "pointer",
             }}
-          >
-            {kwLoading ? "抽出中..." : "🔄 再抽出"}
-          </button>
+          >{kwLoading ? "抽出中..." : "🔄 再抽出"}</button>
         </div>
         {keywords.length === 0 ? (
           <div style={{ fontSize: 14, color: "#6b7280" }}>
@@ -482,15 +512,12 @@ export default function InfoSearch({
         ) : (
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
             {keywords.map((kw, i) => (
-              <button
-                key={i}
+              <button key={i}
                 onClick={() => {
                   if (kw.type === "location") {
-                    setLocationTags(prev =>
-                      prev.includes(kw.text) ? prev : [...prev, kw.text]);
+                    setLocationTags(p => p.includes(kw.text) ? p : [...p, kw.text]);
                   } else {
-                    setQueryTags(prev =>
-                      prev.includes(kw.text) ? prev : [...prev, kw.text]);
+                    setQueryTags(p => p.includes(kw.text) ? p : [...p, kw.text]);
                   }
                 }}
                 style={{
@@ -507,56 +534,60 @@ export default function InfoSearch({
         )}
       </div>
 
-      {/* ━━━━━ セクション② 検索フォーム ━━━━━ */}
+      {/* ── 検索フォーム ── */}
       <div style={{
         background: "#fff", borderRadius: 14, padding: "16px",
         border: "1px solid #e5e7eb", marginBottom: 20,
         boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
       }}>
         <div style={{ marginBottom: 14 }}>
-          <label style={{ fontSize: 15, fontWeight: 700, color: "#374151", display: "block", marginBottom: 6 }}>
-            📍 エリア（Enterで追加・複数可）
+          <label style={{
+            fontSize: 15, fontWeight: 700, color: "#374151",
+            display: "block", marginBottom: 6,
+          }}>
+            📍 エリア
+            <span style={{ fontSize: 13, fontWeight: 400, color: "#9ca3af", marginLeft: 8 }}>
+              Enterで追加・複数可
+            </span>
           </label>
           <TagInput
-            tags={locationTags}
-            input={locationInput}
+            tags={locationTags} input={locationInput}
             onInputChange={setLocationInput}
-            onAddTag={(v) => setLocationTags(prev =>
-              prev.includes(v) ? prev : [...prev, v])}
-            onRemoveTag={(i) => setLocationTags(prev =>
-              prev.filter((_, idx) => idx !== i))}
+            onAddTag={(v) => setLocationTags(p => p.includes(v) ? p : [...p, v])}
+            onRemoveTag={(i) => setLocationTags(p => p.filter((_, j) => j !== i))}
             placeholder="例：豊橋市（Enterで確定）"
-            color="#1a4a8a"
-            inputId="location-input"
+            color="#1a4a8a" inputId="location-input"
           />
         </div>
 
         <div style={{ marginBottom: 14 }}>
-          <label style={{ fontSize: 15, fontWeight: 700, color: "#374151", display: "block", marginBottom: 6 }}>
-            🎯 やりたいこと・キーワード（Enterで追加・複数可）
+          <label style={{
+            fontSize: 15, fontWeight: 700, color: "#374151",
+            display: "block", marginBottom: 6,
+          }}>
+            🎯 やりたいこと・キーワード
+            <span style={{ fontSize: 13, fontWeight: 400, color: "#9ca3af", marginLeft: 8 }}>
+              Enterで追加・複数可
+            </span>
           </label>
           <TagInput
-            tags={queryTags}
-            input={queryInput}
+            tags={queryTags} input={queryInput}
             onInputChange={setQueryInput}
-            onAddTag={(v) => setQueryTags(prev =>
-              prev.includes(v) ? prev : [...prev, v])}
-            onRemoveTag={(i) => setQueryTags(prev =>
-              prev.filter((_, idx) => idx !== i))}
+            onAddTag={(v) => setQueryTags(p => p.includes(v) ? p : [...p, v])}
+            onRemoveTag={(i) => setQueryTags(p => p.filter((_, j) => j !== i))}
             placeholder="例：水彩画 屋外講座（Enterで確定）"
-            color="#2d6047"
-            inputId="query-input"
+            color="#2d6047" inputId="query-input"
           />
         </div>
 
         <div style={{ marginBottom: 14 }}>
-          <label style={{ fontSize: 15, fontWeight: 700, color: "#374151", display: "block", marginBottom: 6 }}>
-            カテゴリ（任意）
-          </label>
+          <label style={{
+            fontSize: 15, fontWeight: 700, color: "#374151",
+            display: "block", marginBottom: 6,
+          }}>カテゴリ（任意）</label>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
             {CATEGORIES.map((c) => (
-              <button
-                key={c}
+              <button key={c}
                 onClick={() => setCategory(category === c ? "" : c)}
                 style={{
                   padding: "5px 12px", borderRadius: 20, fontSize: 14,
@@ -583,12 +614,10 @@ export default function InfoSearch({
             fontSize: 18, fontWeight: 700, cursor: "pointer",
             opacity: loading ? 0.6 : 1,
           }}
-        >
-          {loading ? "🔍 検索中..." : "🔍 地域情報を検索する"}
-        </button>
+        >{loading ? "🔍 検索中..." : "🔍 地域情報を検索する"}</button>
       </div>
 
-      {/* ━━━━━ セクション③ 検索履歴 ━━━━━ */}
+      {/* ── 検索履歴 ── */}
       {searchHistory.length > 0 && (
         <div style={{ marginBottom: 24 }}>
           <div style={{
@@ -620,8 +649,7 @@ export default function InfoSearch({
               <div style={{
                 background: "#f8fafc", padding: "10px 16px",
                 borderBottom: "1px solid #e5e7eb",
-                display: "flex", justifyContent: "space-between",
-                alignItems: "center",
+                display: "flex", justifyContent: "space-between", alignItems: "center",
               }}>
                 <span style={{ fontWeight: 700, fontSize: 15, color: "#374151" }}>
                   🔍 {entry.location} × {entry.query}
@@ -631,7 +659,7 @@ export default function InfoSearch({
                 </span>
               </div>
 
-              {entry.data.results.map((r, i) => (
+              {entry.data.results?.map((r, i) => (
                 <div key={i} style={{
                   padding: "12px 16px",
                   borderBottom: i < entry.data.results.length - 1
@@ -677,35 +705,28 @@ export default function InfoSearch({
                   >🗺 行き方</button>
                 </div>
               ))}
-
-              {entry.data.search_summary && (
-                <div style={{
-                  padding: "8px 16px", background: "#f0f9ff",
-                  fontSize: 13, color: "#0369a1",
-                  borderTop: "1px solid #e0f2fe",
-                }}>
-                  {entry.data.search_summary}
-                </div>
-              )}
             </div>
           ))}
         </div>
       )}
 
-      {/* ━━━━━ セクション④ ルート提案 ━━━━━ */}
+      {/* ── ルート提案 ── */}
       <div id="route-section" style={{
         background: "#fff", borderRadius: 14, padding: "16px",
         border: "1px solid #e5e7eb",
         boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
       }}>
-        <h3 style={{ fontSize: 18, fontWeight: 700, color: "#1f2937", marginTop: 0, marginBottom: 14 }}>
-          🗺 行き方を調べる
-        </h3>
+        <h3 style={{
+          fontSize: 18, fontWeight: 700, color: "#1f2937",
+          marginTop: 0, marginBottom: 14,
+        }}>🗺 行き方を調べる</h3>
 
+        {/* 目的地 */}
         {selectedResult ? (
           <div style={{
-            background: "#eff6ff", borderRadius: 10, padding: "10px 14px",
-            marginBottom: 14, fontSize: 15, color: "#1e3a8a", fontWeight: 600,
+            background: "#eff6ff", borderRadius: 10,
+            padding: "10px 14px", marginBottom: 14,
+            fontSize: 15, color: "#1e3a8a", fontWeight: 600,
           }}>
             📍 目的地：{selectedResult.name}
             {selectedResult.location && (
@@ -716,17 +737,20 @@ export default function InfoSearch({
           </div>
         ) : (
           <div style={{
-            background: "#f9fafb", borderRadius: 10, padding: "10px 14px",
-            marginBottom: 14, fontSize: 14, color: "#9ca3af",
+            background: "#f9fafb", borderRadius: 10,
+            padding: "10px 14px", marginBottom: 14,
+            fontSize: 14, color: "#9ca3af",
           }}>
-            ↑ 検索履歴の「🗺 行き方」ボタンを押すと目的地が設定されます
+            ↑ 検索履歴の「🗺 行き方」ボタンで目的地を設定してください
           </div>
         )}
 
+        {/* 出発地 */}
         <div style={{ marginBottom: 14 }}>
-          <label style={{ fontSize: 15, fontWeight: 700, color: "#374151", display: "block", marginBottom: 6 }}>
-            🚉 出発地（自宅最寄り駅など）
-          </label>
+          <label style={{
+            fontSize: 15, fontWeight: 700, color: "#374151",
+            display: "block", marginBottom: 6,
+          }}>🚉 出発地（自宅最寄り駅など）</label>
           <input
             value={routeFrom}
             onChange={(e) => setRouteFrom(e.target.value)}
@@ -739,20 +763,21 @@ export default function InfoSearch({
           />
         </div>
 
+        {/* 優先条件 */}
         <div style={{ marginBottom: 16 }}>
-          <label style={{ fontSize: 15, fontWeight: 700, color: "#374151", display: "block", marginBottom: 8 }}>
-            優先条件
-          </label>
+          <label style={{
+            fontSize: 15, fontWeight: 700, color: "#374151",
+            display: "block", marginBottom: 8,
+          }}>優先条件</label>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
             {PRIORITIES.map((pr) => (
-              <button
-                key={pr.key}
+              <button key={pr.key}
                 onClick={() => setRoutePriority(pr.key)}
                 style={{
                   padding: "12px 14px", borderRadius: 12, cursor: "pointer",
                   border: `2px solid ${routePriority === pr.key ? "#1a4a8a" : "#e5e7eb"}`,
                   background: routePriority === pr.key ? "#eff6ff" : "#fff",
-                  textAlign: "left", transition: "all 0.15s",
+                  textAlign: "left",
                 }}
               >
                 <div style={{
@@ -767,6 +792,7 @@ export default function InfoSearch({
           </div>
         </div>
 
+        {/* 検索ボタン */}
         <button
           onClick={handleRouteSearch}
           disabled={routeLoading || !selectedResult || !routeFrom}
@@ -775,25 +801,32 @@ export default function InfoSearch({
             background: "#2d6047", color: "#fff", border: "none",
             fontSize: 18, fontWeight: 700, cursor: "pointer",
             opacity: routeLoading || !selectedResult || !routeFrom ? 0.5 : 1,
-            marginBottom: 16,
+            marginBottom: 20,
           }}
-        >
-          {routeLoading ? "🗺 ルート検索中..." : "🗺 行き方を調べる"}
-        </button>
+        >{routeLoading ? "🗺 検索中..." : "🗺 行き方を調べる"}</button>
 
-        {routeResult && (
+        {/* ルートカード */}
+        {routeResult && routeResult.routes && routeResult.routes.length > 0 && (
           <div>
             {routeResult.routes.map((route, i) => (
               <RouteCard key={i} route={route} index={i} />
             ))}
             {routeResult.caution && (
               <div style={{
-                marginTop: 8, padding: "10px 14px",
-                background: "#fef9c3", borderRadius: 10,
-                fontSize: 14, color: "#713f12",
-                border: "1px solid #fde047",
+                padding: "10px 14px", background: "#fef9c3",
+                borderRadius: 10, fontSize: 14, color: "#713f12",
+                border: "1px solid #fde047", marginTop: 8,
               }}>⚠️ {routeResult.caution}</div>
             )}
+          </div>
+        )}
+
+        {routeResult && (!routeResult.routes || routeResult.routes.length === 0) && (
+          <div style={{
+            padding: "16px", background: "#fff5f5", borderRadius: 10,
+            fontSize: 15, color: "#991b1b", textAlign: "center",
+          }}>
+            ルート情報を取得できませんでした。出発地・目的地を確認して再度お試しください。
           </div>
         )}
       </div>
