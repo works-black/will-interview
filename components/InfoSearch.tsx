@@ -63,18 +63,154 @@ const CATEGORIES = [
   '温泉・銭湯', '公園・植物園', 'その他',
 ];
 
-const PRIORITY_OPTIONS: { value: RoutePriority; label: string }[] = [
-  { value: 'distance', label: '🚶 歩く距離が少ない' },
-  { value: 'cost',     label: '💴 交通費が安い' },
-  { value: 'time',     label: '⏱ 時間が短い' },
-  { value: 'comfort',  label: '🌿 疲れにくい（休憩多め）' },
+const PRIORITIES = [
+  { key: 'comfort'  as const, label: '🌿 疲れにくい',    sub: '休憩スポット多め' },
+  { key: 'distance' as const, label: '🚶 歩く距離少なめ', sub: '乗り換えも少なく' },
+  { key: 'cost'     as const, label: '💴 交通費を節約',   sub: '最安ルート' },
+  { key: 'time'     as const, label: '⏱ 時間を短く',     sub: '特急・快速優先' },
 ];
 
-const STEP_ICONS: Record<string, string> = {
+const STEP_ICON: Record<string, string> = {
   walk: '🚶', train: '🚃', bus: '🚌', subway: '🚇', taxi: '🚕',
 };
+const STEP_COLOR: Record<string, string> = {
+  walk: '#6b7280', train: '#1a4a8a', bus: '#d97706', subway: '#7c3aed', taxi: '#dc2626',
+};
+const STEP_BG: Record<string, string> = {
+  walk: '#f3f4f6', train: '#eff6ff', bus: '#fffbeb', subway: '#faf5ff', taxi: '#fff5f5',
+};
+const STEP_LABEL: Record<string, string> = {
+  walk: '🚶 徒歩', train: '🚃 電車', bus: '🚌 バス', subway: '🚇 地下鉄', taxi: '🚕 タクシー',
+};
+const RANK_COLORS = ['#1a4a8a', '#2d6047', '#7c3aed'];
+const RANK_LABELS = ['🥇 おすすめ', '🥈 別ルート', '🥉 別ルート'];
 
-const RANK_MEDALS = ['🥇', '🥈', '🥉'];
+// ── RouteCard ─────────────────────────────────────────────────────────────────
+
+function RouteCard({ route, index }: { route: Route; index: number }) {
+  const [open, setOpen] = useState(index === 0);
+  const color = RANK_COLORS[index] ?? '#555';
+  const rankLabel = RANK_LABELS[index] ?? `ルート${index + 1}`;
+
+  return (
+    <div style={{ border: `2px solid ${color}`, borderRadius: 16, overflow: 'hidden', fontSize: 18 }}>
+
+      {/* ── Header (toggle button) ── */}
+      <button
+        onClick={() => setOpen(!open)}
+        style={{
+          width: '100%', textAlign: 'left', cursor: 'pointer',
+          background: color, color: '#fff',
+          padding: '14px 18px', border: 'none',
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+          gap: 8,
+        }}
+      >
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontWeight: 700, fontSize: 18 }}>{rankLabel}</div>
+          <div style={{ opacity: 0.9, fontSize: 14, marginTop: 2, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+            {route.summary}
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
+          <span style={{ background: 'rgba(255,255,255,0.2)', borderRadius: 20, padding: '4px 12px', fontSize: 15, whiteSpace: 'nowrap' }}>
+            ⏱ {route.total_time}
+          </span>
+          <span style={{ background: 'rgba(255,255,255,0.2)', borderRadius: 20, padding: '4px 12px', fontSize: 15, whiteSpace: 'nowrap' }}>
+            💴 {route.total_cost}
+          </span>
+          <span style={{ fontSize: 18 }}>{open ? '▲' : '▼'}</span>
+        </div>
+      </button>
+
+      {open && (
+        <div style={{ padding: '16px 18px', background: '#fff' }}>
+
+          {/* ── Horizontal timeline ── */}
+          <div style={{ display: 'flex', alignItems: 'center', padding: '12px 0', marginBottom: 16, overflowX: 'auto' }}>
+            {route.steps.map((step, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center' }}>
+                <div style={{ textAlign: 'center', minWidth: 72 }}>
+                  <div style={{
+                    width: 44, height: 44, borderRadius: '50%',
+                    background: STEP_COLOR[step.type] ?? '#555',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 22, margin: '0 auto 4px',
+                  }}>
+                    {STEP_ICON[step.type] ?? '🔹'}
+                  </div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: STEP_COLOR[step.type] ?? '#555' }}>
+                    {step.duration}
+                  </div>
+                  {step.cost && (
+                    <div style={{ fontSize: 12, color: '#888' }}>{step.cost}</div>
+                  )}
+                </div>
+                {i < route.steps.length - 1 && (
+                  <div style={{ flex: 1, minWidth: 24, height: 3, background: '#e5e7eb', margin: '0 4px' }} />
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* ── Step detail list ── */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            {route.steps.map((step, i) => (
+              <div key={i} style={{
+                display: 'flex', alignItems: 'flex-start', gap: 12,
+                background: STEP_BG[step.type] ?? '#f9fafb',
+                borderRadius: 10, padding: '12px 14px',
+                borderLeft: `4px solid ${STEP_COLOR[step.type] ?? '#ccc'}`,
+              }}>
+                <div style={{ fontSize: 26, flexShrink: 0, lineHeight: 1 }}>
+                  {STEP_ICON[step.type] ?? '🔹'}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 4 }}>
+                    <span style={{ fontWeight: 700, fontSize: 17, color: STEP_COLOR[step.type] ?? '#333' }}>
+                      {STEP_LABEL[step.type] ?? step.type}　{step.duration}
+                    </span>
+                    {step.cost && (
+                      <span style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, padding: '2px 10px', fontSize: 15, color: '#374151' }}>
+                        💴 {step.cost}
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ fontSize: 16, color: '#374151', marginTop: 4 }}>{step.desc}</div>
+                  {step.note && (
+                    <div style={{ fontSize: 14, color: '#6b7280', marginTop: 3 }}>💡 {step.note}</div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* ── Rest spots ── */}
+          {route.rest_spots?.length > 0 && (
+            <div style={{ marginTop: 14, padding: '12px 16px', background: '#f0fdf4', borderRadius: 10, border: '1px solid #bbf7d0' }}>
+              <div style={{ fontWeight: 700, color: '#15803d', fontSize: 16, marginBottom: 6 }}>
+                🪑 途中の休憩スポット
+              </div>
+              {route.rest_spots.map((spot, i) => (
+                <div key={i} style={{ fontSize: 16, color: '#166534', padding: '2px 0' }}>・{spot}</div>
+              ))}
+            </div>
+          )}
+
+          {/* ── Elder tips ── */}
+          {route.elder_tips && (
+            <div style={{ marginTop: 10, padding: '12px 16px', background: '#fffbeb', borderRadius: 10, border: '1px solid #fde68a' }}>
+              <div style={{ fontWeight: 700, color: '#92400e', fontSize: 16, marginBottom: 4 }}>
+                👴 コーディネーターへのポイント
+              </div>
+              <div style={{ fontSize: 16, color: '#78350f' }}>{route.elder_tips}</div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 // ── Props ────────────────────────────────────────────────────────────────────
 
@@ -83,7 +219,7 @@ interface Props {
   conversationMessages?: { role: string; content: string }[];
 }
 
-// ── Component ────────────────────────────────────────────────────────────────
+// ── Main Component ────────────────────────────────────────────────────────────
 
 export default function InfoSearch({ defaultLocation = '', conversationMessages }: Props) {
   // Search state
@@ -107,7 +243,6 @@ export default function InfoSearch({ defaultLocation = '', conversationMessages 
   const [routeLoading, setRouteLoading] = useState(false);
   const [routeError, setRouteError] = useState('');
 
-  // Auto-extract keywords when conversation messages are provided
   useEffect(() => {
     if (conversationMessages && conversationMessages.length > 0) {
       extractKeywords();
@@ -207,9 +342,9 @@ export default function InfoSearch({ defaultLocation = '', conversationMessages 
               disabled={keywordsLoading}
               className="text-sm text-blue-600 hover:text-blue-700 font-medium disabled:opacity-50 flex items-center gap-1"
             >
-              {keywordsLoading ? (
-                <span className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin inline-block" />
-              ) : '🔄'}
+              {keywordsLoading
+                ? <span className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin inline-block" />
+                : '🔄'}
               会話から再抽出
             </button>
           </div>
@@ -232,12 +367,8 @@ export default function InfoSearch({ defaultLocation = '', conversationMessages 
                     onClick={() => handleKeywordClick(kw)}
                     className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-colors ${
                       selected
-                        ? isLocation
-                          ? 'bg-blue-600 text-white border-blue-600'
-                          : 'bg-green-600 text-white border-green-600'
-                        : isLocation
-                        ? 'bg-blue-50 text-blue-700 border-blue-200 hover:border-blue-400'
-                        : 'bg-green-50 text-green-700 border-green-200 hover:border-green-400'
+                        ? isLocation ? 'bg-blue-600 text-white border-blue-600' : 'bg-green-600 text-white border-green-600'
+                        : isLocation ? 'bg-blue-50 text-blue-700 border-blue-200 hover:border-blue-400' : 'bg-green-50 text-green-700 border-green-200 hover:border-green-400'
                     }`}
                   >
                     {isLocation ? '📍' : '🎯'} {kw.text}
@@ -323,9 +454,7 @@ export default function InfoSearch({ defaultLocation = '', conversationMessages 
         </div>
 
         {error && (
-          <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-sm text-red-700 mb-4">
-            {error}
-          </div>
+          <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-sm text-red-700 mb-4">{error}</div>
         )}
 
         {results && (
@@ -346,23 +475,17 @@ export default function InfoSearch({ defaultLocation = '', conversationMessages 
               <div
                 key={i}
                 className={`border-2 rounded-xl p-4 transition-shadow ${
-                  selectedResult?.name === r.name
-                    ? 'border-blue-400 shadow-md'
-                    : 'border-gray-200 hover:shadow-sm'
+                  selectedResult?.name === r.name ? 'border-blue-400 shadow-md' : 'border-gray-200 hover:shadow-sm'
                 }`}
               >
                 <div className="flex items-start justify-between mb-2">
                   <h3 className="font-bold text-gray-800 text-base leading-snug">{r.name}</h3>
                   <div className="flex gap-1 flex-shrink-0 ml-2">
                     {r.elder_friendly && (
-                      <span className="bg-green-100 text-green-700 text-xs px-2 py-0.5 rounded-full whitespace-nowrap">
-                        高齢者歓迎
-                      </span>
+                      <span className="bg-green-100 text-green-700 text-xs px-2 py-0.5 rounded-full whitespace-nowrap">高齢者歓迎</span>
                     )}
                     {r.beginner_friendly && (
-                      <span className="bg-yellow-100 text-yellow-700 text-xs px-2 py-0.5 rounded-full whitespace-nowrap">
-                        初心者OK
-                      </span>
+                      <span className="bg-yellow-100 text-yellow-700 text-xs px-2 py-0.5 rounded-full whitespace-nowrap">初心者OK</span>
                     )}
                   </div>
                 </div>
@@ -370,16 +493,10 @@ export default function InfoSearch({ defaultLocation = '', conversationMessages 
                   {r.location && <div className="flex items-start gap-1"><span>📍</span><span>{r.location}</span></div>}
                   {r.schedule && <div className="flex items-start gap-1"><span>📅</span><span>{r.schedule}</span></div>}
                   {r.fee && <div className="flex items-start gap-1"><span>💴</span><span>{r.fee}</span></div>}
-                  {r.contact && (
-                    <div className="flex items-start gap-1 col-span-2">
-                      <span>📞</span><span className="break-all">{r.contact}</span>
-                    </div>
-                  )}
+                  {r.contact && <div className="flex items-start gap-1 col-span-2"><span>📞</span><span className="break-all">{r.contact}</span></div>}
                 </div>
                 {r.note && (
-                  <div className="text-sm text-gray-600 bg-gray-50 rounded-lg px-3 py-2 mb-3">
-                    💡 {r.note}
-                  </div>
+                  <div className="text-sm text-gray-600 bg-gray-50 rounded-lg px-3 py-2 mb-3">💡 {r.note}</div>
                 )}
                 <button
                   onClick={() => {
@@ -418,125 +535,94 @@ export default function InfoSearch({ defaultLocation = '', conversationMessages 
         <div id="route-section" className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5">
           <h2 className="text-xl font-bold text-gray-800 mb-4">🗺️ 行き方を調べる</h2>
 
-          <div className="bg-blue-50 rounded-xl px-4 py-3 mb-4">
-            <p className="text-xs text-blue-500 font-semibold mb-0.5">目的地</p>
-            <p className="text-base font-bold text-blue-800">{selectedResult.name}</p>
+          {/* Destination badge */}
+          <div style={{ background: '#eff6ff', borderRadius: 12, padding: '12px 16px', marginBottom: 16 }}>
+            <div style={{ fontSize: 13, color: '#3b82f6', fontWeight: 700, marginBottom: 2 }}>📍 目的地</div>
+            <div style={{ fontSize: 18, fontWeight: 700, color: '#1e3a8a' }}>{selectedResult.name}</div>
             {selectedResult.location && (
-              <p className="text-sm text-blue-600 mt-0.5">📍 {selectedResult.location}</p>
+              <div style={{ fontSize: 15, color: '#3b82f6', marginTop: 2 }}>📍 {selectedResult.location}</div>
             )}
           </div>
 
-          <div className="space-y-4 mb-4">
-            <div>
-              <label className="text-sm font-semibold text-gray-600 block mb-1">
-                出発地（自宅最寄り駅など）
-              </label>
-              <input
-                value={routeFrom}
-                onChange={(e) => setRouteFrom(e.target.value)}
-                placeholder="例：○○駅、△△バス停"
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl text-base focus:outline-none focus:ring-2 focus:ring-blue-400"
-              />
-            </div>
-
-            <div>
-              <label className="text-sm font-semibold text-gray-600 block mb-2">優先条件を選択</label>
-              <div className="grid grid-cols-2 gap-2">
-                {PRIORITY_OPTIONS.map((opt) => (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    onClick={() => setRoutePriority(opt.value)}
-                    className={`py-2.5 px-3 rounded-xl text-sm font-medium border transition-colors text-left ${
-                      routePriority === opt.value
-                        ? 'bg-blue-600 text-white border-blue-600'
-                        : 'bg-gray-50 text-gray-700 border-gray-200 hover:border-blue-400'
-                    }`}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <button
-              onClick={handleRouteSearch}
-              disabled={routeLoading || !routeFrom.trim()}
-              className="w-full py-4 bg-gray-700 hover:bg-gray-800 text-white font-bold rounded-xl text-lg disabled:opacity-50 transition-colors"
-            >
-              {routeLoading ? (
-                <span className="flex items-center justify-center gap-2">
-                  <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  ルートを検索中...
-                </span>
-              ) : '🗺️ 行き方を調べる'}
-            </button>
+          {/* From input */}
+          <div style={{ marginBottom: 16 }}>
+            <label style={{ display: 'block', fontWeight: 700, fontSize: 16, color: '#374151', marginBottom: 6 }}>
+              出発地（自宅最寄り駅など）
+            </label>
+            <input
+              value={routeFrom}
+              onChange={(e) => setRouteFrom(e.target.value)}
+              placeholder="例：○○駅、△△バス停"
+              style={{ width: '100%', padding: '12px 16px', border: '1.5px solid #d1d5db', borderRadius: 12, fontSize: 17, boxSizing: 'border-box', outline: 'none' }}
+              onFocus={(e) => { e.currentTarget.style.borderColor = '#3b82f6'; }}
+              onBlur={(e) => { e.currentTarget.style.borderColor = '#d1d5db'; }}
+            />
           </div>
 
+          {/* Priority buttons */}
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ fontWeight: 700, fontSize: 16, color: '#374151', marginBottom: 8 }}>優先条件を選択</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              {PRIORITIES.map((pr) => (
+                <button
+                  key={pr.key}
+                  onClick={() => setRoutePriority(pr.key)}
+                  style={{
+                    padding: '12px 14px', borderRadius: 12, cursor: 'pointer',
+                    border: routePriority === pr.key ? '2px solid #1a4a8a' : '2px solid #e5e7eb',
+                    background: routePriority === pr.key ? '#eff6ff' : '#fff',
+                    textAlign: 'left', transition: 'all 0.15s',
+                  }}
+                >
+                  <div style={{ fontWeight: 700, fontSize: 17, color: routePriority === pr.key ? '#1a4a8a' : '#374151' }}>
+                    {pr.label}
+                  </div>
+                  <div style={{ fontSize: 13, color: '#6b7280', marginTop: 2 }}>{pr.sub}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Search button */}
+          <button
+            onClick={handleRouteSearch}
+            disabled={routeLoading || !routeFrom.trim()}
+            style={{
+              width: '100%', padding: '16px', background: routeLoading || !routeFrom.trim() ? '#9ca3af' : '#1e3a8a',
+              color: '#fff', fontWeight: 700, fontSize: 18, borderRadius: 12,
+              border: 'none', cursor: routeLoading || !routeFrom.trim() ? 'not-allowed' : 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+              marginBottom: 16, transition: 'background 0.15s',
+            }}
+          >
+            {routeLoading ? (
+              <>
+                <span style={{ width: 22, height: 22, border: '3px solid rgba(255,255,255,0.4)', borderTopColor: '#fff', borderRadius: '50%', display: 'inline-block', animation: 'spin 0.8s linear infinite' }} />
+                ルートを検索中...
+              </>
+            ) : '🗺️ 行き方を調べる'}
+          </button>
+
+          <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+
           {routeError && (
-            <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-sm text-red-700 mb-4">
+            <div style={{ background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 10, padding: '12px 16px', color: '#dc2626', fontSize: 16, marginBottom: 16 }}>
               {routeError}
             </div>
           )}
 
+          {/* Route cards */}
           {routeResult && (
-            <div className="space-y-4">
-              {routeResult.routes.map((route, i) => (
-                <div key={i} className="border border-gray-200 rounded-xl overflow-hidden">
-                  <div className="bg-gray-50 px-4 py-3 flex items-center gap-2 border-b border-gray-200">
-                    <span className="text-xl">{RANK_MEDALS[i] ?? '▶'}</span>
-                    <div>
-                      <p className="font-bold text-gray-800">{route.label}</p>
-                      <p className="text-sm text-gray-500">{route.summary}</p>
-                    </div>
-                    <div className="ml-auto text-right">
-                      <p className="text-sm font-semibold text-gray-700">⏱ {route.total_time}</p>
-                      <p className="text-sm text-gray-500">💴 {route.total_cost}</p>
-                    </div>
-                  </div>
-
-                  <div className="px-4 py-3 space-y-2">
-                    {route.steps.map((step, j) => (
-                      <div key={j} className="flex items-start gap-3">
-                        <span className="text-lg shrink-0 mt-0.5">{STEP_ICONS[step.type] ?? '▶'}</span>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-sm font-semibold text-gray-700">[{step.duration}]</span>
-                            <span className="text-sm text-gray-800">{step.desc}</span>
-                            {step.cost && (
-                              <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
-                                {step.cost}
-                              </span>
-                            )}
-                          </div>
-                          {step.note && (
-                            <p className="text-xs text-gray-400 mt-0.5">{step.note}</p>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
-                  {(route.rest_spots?.length > 0 || route.elder_tips) && (
-                    <div className="px-4 pb-3 space-y-1.5">
-                      {route.rest_spots?.length > 0 && (
-                        <div className="bg-green-50 rounded-lg px-3 py-2 text-sm text-green-800">
-                          🪑 休憩スポット：{route.rest_spots.join('、')}
-                        </div>
-                      )}
-                      {route.elder_tips && (
-                        <div className="bg-blue-50 rounded-lg px-3 py-2 text-sm text-blue-800">
-                          👴 コツ：{route.elder_tips}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              ))}
+            <div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                {routeResult.routes.map((route, i) => (
+                  <RouteCard key={i} route={route} index={i} />
+                ))}
+              </div>
 
               {routeResult.caution && (
-                <div className="flex items-start gap-2 bg-yellow-50 border border-yellow-200 rounded-xl px-4 py-3 text-sm text-yellow-800">
-                  <span className="shrink-0">⚠️</span>
+                <div style={{ marginTop: 16, display: 'flex', alignItems: 'flex-start', gap: 10, background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 12, padding: '14px 16px', fontSize: 16, color: '#92400e' }}>
+                  <span style={{ flexShrink: 0, fontSize: 20 }}>⚠️</span>
                   <span>{routeResult.caution}</span>
                 </div>
               )}
