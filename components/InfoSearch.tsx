@@ -49,8 +49,18 @@ interface Keyword {
   text: string;
   type: "location" | "activity";
 }
+interface RouteHistory {
+  id: string;
+  from: string;
+  to: string;
+  toLocation: string;
+  priority: string;
+  searchedAt: string;
+  data: RouteResponse;
+}
 
 const STORAGE_KEY = "will_search_history";
+const ROUTE_STORAGE_KEY = "will_route_history";
 
 const STEP_ICON: Record<string, string> = {
   walk: "🚶", train: "🚃", bus: "🚌", subway: "🚇", taxi: "🚕",
@@ -272,6 +282,76 @@ function RouteCard({ route, index }: { route: Route; index: number }) {
 }
 
 // ────────────────────────────────────────────
+// RouteHistoryCard — InfoSearch の外側で定義
+// ────────────────────────────────────────────
+const PRIORITY_LABEL: Record<string, string> = {
+  comfort:  "🌿 疲れにくい",
+  distance: "🚶 歩く距離少なめ",
+  cost:     "💴 交通費を節約",
+  time:     "⏱ 時間を短く",
+};
+
+function RouteHistoryCard({ entry }: { entry: RouteHistory }) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div style={{
+      border: "1px solid #e5e7eb",
+      borderRadius: 12,
+      marginBottom: 14,
+      overflow: "hidden",
+      boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
+    }}>
+      {/* ヘッダー（タップで開閉） */}
+      <button
+        onClick={() => setOpen(v => !v)}
+        style={{
+          width: "100%", textAlign: "left", cursor: "pointer",
+          background: "#f8fafc", padding: "12px 16px",
+          border: "none", borderBottom: open ? "1px solid #e5e7eb" : "none",
+          display: "flex", justifyContent: "space-between", alignItems: "center",
+        }}
+      >
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontWeight: 700, fontSize: 15, color: "#374151" }}>
+            🚉 {entry.from}　→　📍 {entry.to}
+          </div>
+          <div style={{
+            fontSize: 13, color: "#6b7280", marginTop: 3,
+            display: "flex", gap: 10, flexWrap: "wrap",
+          }}>
+            <span>{PRIORITY_LABEL[entry.priority] ?? entry.priority}</span>
+            <span>•</span>
+            <span>{entry.data.routes?.length ?? 0}ルート</span>
+            <span>•</span>
+            <span>{entry.searchedAt}</span>
+          </div>
+        </div>
+        <span style={{ fontSize: 18, marginLeft: 8 }}>
+          {open ? "▲" : "▼"}
+        </span>
+      </button>
+
+      {/* ルートカード一覧 */}
+      {open && (
+        <div style={{ padding: "12px 12px 4px" }}>
+          {entry.data.routes?.map((route, i) => (
+            <RouteCard key={i} route={route} index={i} />
+          ))}
+          {entry.data.caution && (
+            <div style={{
+              padding: "10px 14px", background: "#fef9c3",
+              borderRadius: 10, fontSize: 14, color: "#713f12",
+              border: "1px solid #fde047", marginBottom: 12,
+            }}>⚠️ {entry.data.caution}</div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ────────────────────────────────────────────
 // TagInput — InfoSearch の外側で定義
 // ────────────────────────────────────────────
 function TagInput({
@@ -386,12 +466,17 @@ export default function InfoSearch({
     useState<"distance" | "cost" | "time" | "comfort">("comfort");
   const [routeResult, setRouteResult] = useState<RouteResponse | null>(null);
   const [routeLoading, setRouteLoading] = useState(false);
+  const [routeHistory, setRouteHistory] = useState<RouteHistory[]>([]);
 
   // localStorage から履歴を読み込み
   useEffect(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
       try { setSearchHistory(JSON.parse(saved)); } catch {}
+    }
+    const savedRoutes = localStorage.getItem(ROUTE_STORAGE_KEY);
+    if (savedRoutes) {
+      try { setRouteHistory(JSON.parse(savedRoutes)); } catch {}
     }
   }, []);
 
@@ -404,6 +489,11 @@ export default function InfoSearch({
   const saveHistory = (h: SearchHistory[]) => {
     setSearchHistory(h);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(h));
+  };
+
+  const saveRouteHistory = (h: RouteHistory[]) => {
+    setRouteHistory(h);
+    localStorage.setItem(ROUTE_STORAGE_KEY, JSON.stringify(h));
   };
 
   const extractKeywords = async () => {
@@ -465,6 +555,23 @@ export default function InfoSearch({
       const data: RouteResponse = await res.json();
       console.log("Route response:", JSON.stringify(data, null, 2));
       setRouteResult(data);
+
+      // ── ルート履歴に保存 ──
+      if (data.routes && data.routes.length > 0) {
+        const entry: RouteHistory = {
+          id: Date.now().toString(),
+          from: routeFrom,
+          to: selectedResult.name,
+          toLocation: selectedResult.location ?? "",
+          priority: routePriority,
+          searchedAt: new Date().toLocaleString("ja-JP", {
+            year: "numeric", month: "2-digit", day: "2-digit",
+            hour: "2-digit", minute: "2-digit",
+          }),
+          data,
+        };
+        saveRouteHistory([entry, ...routeHistory]);
+      }
     } catch (err) {
       console.error("Route error:", err);
     }
@@ -706,6 +813,37 @@ export default function InfoSearch({
                 </div>
               ))}
             </div>
+          ))}
+        </div>
+      )}
+
+      {/* ── ルート履歴 ── */}
+      {routeHistory.length > 0 && (
+        <div style={{ marginBottom: 24 }}>
+          <div style={{
+            display: "flex", justifyContent: "space-between",
+            alignItems: "center", marginBottom: 12,
+          }}>
+            <h3 style={{
+              fontSize: 18, fontWeight: 700, color: "#1f2937", margin: 0,
+            }}>
+              🗺 行き方の履歴（{routeHistory.length}件）
+            </h3>
+            <button
+              onClick={() => {
+                localStorage.removeItem(ROUTE_STORAGE_KEY);
+                setRouteHistory([]);
+              }}
+              style={{
+                fontSize: 14, color: "#ef4444", background: "none",
+                border: "1px solid #fca5a5", borderRadius: 8,
+                padding: "4px 12px", cursor: "pointer",
+              }}
+            >🗑 履歴をクリア</button>
+          </div>
+
+          {routeHistory.map((entry) => (
+            <RouteHistoryCard key={entry.id} entry={entry} />
           ))}
         </div>
       )}
