@@ -204,7 +204,12 @@ export default function InterviewPage() {
           </div>
         ) : (
           <div className="flex-1 overflow-y-auto pb-4">
-            <InfoSearch />
+            <InfoSearch
+              conversationMessages={state.messages.map((m) => ({
+                role: m.role,
+                content: m.content,
+              }))}
+            />
           </div>
         )}
       </div>
