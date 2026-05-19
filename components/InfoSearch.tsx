@@ -365,9 +365,9 @@ export default function InfoSearch({
   }, []);
 
   // ── 会話からキーワード自動抽出
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (conversationMessages.length > 0) extractKeywords();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [conversationMessages.length]);
 
   const saveHistory = (newHistory: SearchHistory[]) => {
